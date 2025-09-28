@@ -8,7 +8,7 @@ from google import genai
 app = Flask(__name__, template_folder="templates")
 
 # ---------------- Gemini API ----------------
-GEMINI_API_KEY = "AIzaSyDSfzZlHaR9R2dmgHxqmIoIw_EvHtWiLQc"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ---------------- Default Prompt ----------------
@@ -34,8 +34,8 @@ async def generate_gemini_response(prompt: str) -> str:
         return "Sorry, I couldn't generate a response."
 
 # ---------------- Google Search ----------------
-API_KEY = "AIzaSyCfn4s8xVw4VKyZGqOCMSFViu8T58UVuC0"
-CSE_ID = "13d5343b047e94be0"
+API_KEY = os.getenv("GOOGLE_API_KEY")
+CSE_ID = os.getenv("CSE_ID")
 
 async def search_google_api(query: str):
     results = []
@@ -118,3 +118,4 @@ def ask():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
