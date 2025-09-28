@@ -159,7 +159,7 @@ User → Flask Backend → Gemini API
 
 ---
 
-## 📌 Next Steps
+## 📌 Future Scope
 
 * Extend to **full browser automation** (Playwright/Selenium) to perform actions like clicking, scraping, and navigating websites.
 * Add **voice input** for hands-free experience.
