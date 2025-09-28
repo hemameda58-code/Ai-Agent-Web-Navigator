@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Web Navigator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+      z-index: -1;
+      animation: backgroundMove 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundMove {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-10px) rotate(1deg); }
+      66% { transform: translateY(5px) rotate(-1deg); }
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 800px;
+      height: 85vh;
+      max-height: 700px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 
+        0 20px 40px rgba(0,0,0,0.1),
+        0 15px 12px rgba(0,0,0,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      animation: containerAppear 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      will-change: transform, opacity;
+    }
+
+    @keyframes containerAppear {
+      from { 
+        opacity: 0; 
+        transform: translateY(30px) scale(0.95); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+      }
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      color: white;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chat-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+      animation: shine 3s ease-in-out infinite;
+    }
+
+    @keyframes shine {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .chat-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chat-header p {
+      font-size: 0.9rem;
+      opacity: 0.9;
+      margin-top: 5px;
+      position: relative;
+      z-index: 1;
+    }
+
+    #chat-box {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: rgba(248, 250, 252, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+    }
+
+    #chat-box::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 3px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.8);
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 16px 20px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      animation: messageAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      position: relative;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      will-change: transform, opacity;
+    }
+
+    @keyframes messageAppear {
+      to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .user {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 8px;
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+      animation-delay: 0.1s;
+    }
+
+    .ai {
+      background: rgba(255, 255, 255, 0.9);
+      color: #374151;
+      align-self: flex-start;
+      border-bottom-left-radius: 8px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      animation-delay: 0.2s;
+    }
+
+    .input-container {
+      display: flex;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(229, 231, 235, 0.8);
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 50px;
+      border: 2px solid rgba(229, 231, 235, 0.8);
+      font-size: 16px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      font-family: inherit;
+      will-change: border-color, box-shadow, transform;
+    }
+
+    #user-input:focus {
+      border-color: #667eea;
+      box-shadow: 
+        0 0 0 4px rgba(102, 126, 234, 0.1),
+        0 8px 16px rgba(102, 126, 234, 0.15);
+      transform: translateY(-1px);
+    }
+
+    #user-input::placeholder {
+      color: #9CA3AF;
+    }
+
+    .send-button {
+      padding: 14px 20px;
+      border: none;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      position: relative;
+      overflow: hidden;
+      will-change: transform, box-shadow;
+      min-width: 80px;
+    }
+
+    .send-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+    }
+
+    .send-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .send-button:hover::before {
+      transform: translateX(100%);
+    }
+
+    .send-button:active {
+      transform: translateY(-1px);
+    }
+
+    /* Enhanced loading animation */
+    .loading-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot-typing {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      animation: dotPulse 1.4s ease-in-out infinite both;
+    }
+
+    .dot-typing:nth-child(1) { animation-delay: -0.32s; }
+    .dot-typing:nth-child(2) { animation-delay: -0.16s; }
+    .dot-typing:nth-child(3) { animation-delay: 0; }
+
+    @keyframes dotPulse {
+      0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .source-label {
+      font-size: 11px;
+      color: #6B7280;
+      margin-top: 8px;
+      font-style: italic;
+      opacity: 0.8;
+      padding: 4px 8px;
+      background: rgba(107, 114, 128, 0.1);
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .typing-indicator {
+      color: #6B7280;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+      body {
+        padding: 5px;
+      }
+
+      .chat-container {
+        height: 95vh;
+        max-height: none;
+        border-radius: 16px;
+      }
+
+      .chat-header {
+        padding: 16px;
+      }
+
+      .chat-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .chat-header p {
+        font-size: 0.8rem;
+      }
+
+      #chat-box {
+        padding: 16px;
+        gap: 12px;
+      }
+
+      .message {
+        max-width: 85%;
+        padding: 12px 16px;
+        border-radius: 16px;
+      }
+
+      .input-container {
+        padding: 16px;
+        gap: 10px;
+      }
+
+      #user-input {
+        padding: 12px 16px;
+        font-size: 16px; /* Prevents zoom on iOS */
+      }
+
+      .send-button {
+        padding: 12px 18px;
+        min-width: 70px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .message {
+        max-width: 90%;
+        padding: 10px 14px;
+      }
+
+      .chat-header {
+        padding: 12px;
+      }
+
+      #chat-box {
+        padding: 12px;
+        gap: 10px;
+      }
+
+      .input-container {
+        padding: 12px;
+      }
+    }
+
+    /* Performance optimizations */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Focus management for accessibility */
+    .chat-container:focus-within {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>🤖 AI Web Navigator</h1>
+      <p>Your intelligent assistant for web exploration</p>
+    </div>
+    <div id="chat-box"></div>
+    <div class="input-container">
+      <input type="text" id="user-input" placeholder="Ask me anything..." autocomplete="off" />
+      <button class="send-button" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+<script>
+async function sendMessage() {
+  const input = document.getElementById("user-input");
+  const message = input.value.trim();
+  if (!message) return;
+
+  const chatBox = document.getElementById("chat-box");
+
+  // Add user message
+  const userDiv = document.createElement("div");
+  userDiv.className = "message user";
+  userDiv.innerHTML = `<b>You:</b> ${message}`;
+  chatBox.appendChild(userDiv);
+  input.value = "";
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Add AI loading animation
+  const loadingDiv = document.createElement("div");
+  loadingDiv.className = "message ai";
+  loadingDiv.innerHTML = `<div class="typing-indicator">
+                            <span>AI is thinking</span>
+                            <div class="loading-container">
+                              <div class="dot-typing"></div>
+                              <div class="dot-typing"></div>
+                              <div class="dot-typing"></div>
+                            </div>
+                          </div>`;
+  chatBox.appendChild(loadingDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  try {
+    const response = await fetch("/ask", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ message })
+    });
+
+    const data = await response.json();
+    loadingDiv.remove();
+
+    // AI answer
+    const aiAnswer = data.ai_answer ? data.ai_answer.replace(/\n/g, "<br>") : "Sorry, no response.";
+    const aiDiv = document.createElement("div");
+    aiDiv.className = "message ai";
+    aiDiv.innerHTML = `<b>AI:</b> ${aiAnswer}`;
+    chatBox.appendChild(aiDiv);
+
+    // Show source label (Gemini / Google)
+    const sourceDiv = document.createElement("div");
+    sourceDiv.className = "message ai source-label";
+    const sourceText = data.answer_source === "google" 
+        ? "Answer generated using Google search results"
+        : "Answer generated by Gemini AI";
+    sourceDiv.innerHTML = sourceText;
+    chatBox.appendChild(sourceDiv);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+  } catch (err) {
+    console.error(err);
+    loadingDiv.remove();
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "message ai";
+    errorDiv.innerHTML = `<b>AI:</b> Error communicating with server.`;
+    chatBox.appendChild(errorDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+}
+
+document.getElementById("user-input").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") sendMessage();
+});
+
+// Enhance mobile experience
+if ('ontouchstart' in window) {
+  document.body.classList.add('touch-device');
+}
+
+// Optimize scroll performance
+let ticking = false;
+function updateScroll() {
+  ticking = false;
+}
+
+document.getElementById('chat-box').addEventListener('scroll', function() {
+  if (!ticking) {
+    requestAnimationFrame(updateScroll);
+    ticking = true;
+  }
+});
+</script>
+
+</body>
+</html>
